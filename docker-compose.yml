@@ -1,0 +1,16 @@
+services:
+  database:
+    image: postgis/postgis:16-3.4
+    container_name: dashboard-iptv
+    ports:
+      - '${POSTGRES_PORT}:${POSTGRES_PORT}'
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=dashboard-iptv
+    volumes:
+      - pgdata:/data/postgres
+
+volumes:
+  pgdata:
+    driver: local

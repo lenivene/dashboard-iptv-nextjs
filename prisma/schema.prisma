@@ -1,0 +1,349 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [citext]
+}
+
+enum GlobalRole {
+  WEBMASTER // SUDO
+  USER
+}
+
+enum PanelRole {
+  ADMIN // manda em tudo no painel
+  CUSTOM // permissões modeladas via Permission
+}
+
+model User {
+  id String @id @default(uuid())
+
+  username String
+  password String?
+  credit   Decimal    @default(0) @db.Decimal(10, 2)
+  role     GlobalRole @default(USER)
+
+  isActive            Boolean @default(true)
+  forceChangePassword Boolean @default(false)
+
+  parentUserId String?
+  parentUser   User?   @relation("UserHierarchy", fields: [parentUserId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  childUsers   User[]  @relation("UserHierarchy")
+
+  panelUser          PanelUser[]
+  clients            Client[]
+  m3uDomainOverrides UserM3uDomainOverride[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("user")
+}
+
+model Panel {
+  id String @id @default(uuid())
+
+  domain String @unique @db.Citext
+
+  name String?
+  logo String?
+
+  servers    Servers[]
+  members    PanelUser[]
+  permission Permission[]
+
+  isBlocked Boolean @default(false)
+
+  expiredAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("panel")
+}
+
+model PanelUser {
+  id String @id @default(uuid())
+
+  userId  String
+  panelId String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  panel   Panel  @relation(fields: [panelId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  role PanelRole
+
+  // Se role = CUSTOM → usa este conjunto de permissões
+  permissionId     String?
+  permission       Permission?            @relation(fields: [permissionId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  serverPermission UserServerPermission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, panelId])
+  @@index([panelId])
+  @@index([userId])
+  @@map("panel_user")
+}
+
+model Permission {
+  id   String @id @default(uuid())
+  name String
+
+  panelId String?
+  panel   Panel?  @relation(fields: [panelId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  canCreateUser Boolean @default(false)
+  canEditUser   Boolean @default(false)
+  canDeleteUser Boolean @default(false)
+  canListUser   Boolean @default(false)
+
+  canDeleteAnyUser Boolean @default(false)
+
+  canBlockUser   Boolean @default(false)
+  canUnblockUser Boolean @default(false)
+
+  canCreateClient Boolean @default(false)
+  canEditClient   Boolean @default(false)
+  canDeleteClient Boolean @default(false)
+
+  canEditAnyClient        Boolean @default(false)
+  canDeleteAnyClient      Boolean @default(false)
+  canEditClientUsername   Boolean @default(false)
+  canEditClientPassword   Boolean @default(false)
+  canEditClientExpiryDate Boolean @default(false)
+  canEditClientPlanPrice  Boolean @default(false)
+  canEditClientUser       Boolean @default(false)
+
+  canBlockClient   Boolean @default(false)
+  canUnblockClient Boolean @default(false)
+
+  canTransferCredit Boolean @default(false)
+  canRemoveCredit   Boolean @default(false)
+
+  canCreatePackage Boolean @default(false)
+  canListPackage   Boolean @default(false)
+  canEditPackage   Boolean @default(false)
+  canDeletePackage Boolean @default(false)
+
+  assignedTo PanelUser[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([panelId, name])
+  @@map("permission")
+}
+
+model UserServerPermission {
+  id String @id @default(uuid())
+
+  panelUserId String
+  serverId    String
+
+  panelUser PanelUser @relation(fields: [panelUserId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  server    Servers   @relation(fields: [serverId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([panelUserId, serverId])
+  @@index([panelUserId])
+  @@index([serverId])
+  @@map("user_server_permission")
+}
+
+model M3uDomain {
+  id String @id @default(uuid())
+
+  name   String?
+  domain String  @db.Citext
+  useSsl Boolean @default(false)
+
+  servers  Servers @relation(fields: [serverId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  serverId String
+
+  userOverrides UserM3uDomainOverride[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([serverId, domain])
+  @@index([serverId])
+  @@map("m3u_domains")
+}
+
+model UserM3uDomainOverride {
+  id     String @id @default(uuid())
+  domain String @db.Citext
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  m3uDomain   M3uDomain @relation(fields: [m3uDomainId], references: [id], onDelete: Cascade)
+  m3uDomainId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, m3uDomainId])
+  @@unique([domain])
+  @@index([userId])
+  @@index([m3uDomainId])
+  @@map("user_m3u_domain_override")
+}
+
+enum ServerType {
+  XUI
+  XTREAM
+  ONE_STREAM
+}
+
+model Servers {
+  id String @id @default(uuid())
+
+  name                String
+  type                ServerType
+  active              Boolean    @default(true)
+  defaultPassClient   String
+  allowedBouquets     Int[]
+  userMaxConnection   Int
+  allowCreateRestream Boolean    @default(false)
+
+  templateCreateClient String
+
+  clients              Client[]
+  m3uDomains           M3uDomain[]
+  userServerPermission UserServerPermission[]
+
+  package Packages?
+  panel   Panel?    @relation(fields: [panelId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  panelId String?
+
+  xui       ServerXuiData?
+  xtream    ServerXtreamData?
+  oneStream ServerOneStreamData?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([panelId])
+  @@map("servers")
+}
+
+model ServerXuiData {
+  id String @id @default(uuid())
+
+  serverId String  @unique
+  server   Servers @relation(fields: [serverId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  domain     String
+  accessCode String
+  apiKey     String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([domain])
+  @@map("server_xui_data")
+}
+
+model ServerXtreamData {
+  id String @id @default(uuid())
+
+  serverId String  @unique
+  server   Servers @relation(fields: [serverId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  host     String  @db.Citext
+  port     Int     @default(7999)
+  username String  @default("root")
+  password String?
+  database String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([host, port])
+  @@map("server_xtream_data")
+}
+
+model ServerOneStreamData {
+  id String @id @default(uuid())
+
+  serverId String  @unique
+  server   Servers @relation(fields: [serverId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  domain    String
+  apiToken  String
+  userToken String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([domain])
+  @@map("server_one_stream_data")
+}
+
+enum DurationIn {
+  HOURS
+  DAYS
+  MONTHS
+  YEARS
+}
+
+model Packages {
+  id String @id @default(uuid())
+
+  isActive     Boolean @default(true)
+  isMag        Boolean @default(false)
+  isAsnLock    Boolean @default(false)
+  isIspLock    Boolean @default(false)
+  isTrial      Boolean @default(false)
+  isReStreamer Boolean @default(false)
+
+  name         String
+  planPrice    Int        @default(0) // Salvar em centavos
+  credit       Decimal    @default(0) @db.Decimal(10, 2)
+  accessOutput String[]
+  duration     Int        @default(1)
+  durationIn   DurationIn
+
+  server          Servers @relation(fields: [serverId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  serverId        String  @unique
+  serverPackageId String
+
+  @@map("packages")
+}
+
+model Client {
+  id String @id @default(uuid())
+
+  username       String
+  password       String
+  totalScreen    Int       @default(1)
+  isTrial        Boolean
+  expirationDate DateTime?
+  isActive       Boolean   @default(true)
+
+  ownerUser   User   @relation(fields: [ownerUserId], references: [id])
+  ownerUserId String
+
+  server   Servers @relation(fields: [serverId], references: [id])
+  serverId String
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([serverId, username])
+  @@index([serverId])
+  @@map("client_server")
+}

@@ -1,0 +1,55 @@
+{
+  "name": "nextjs",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "studio": "npx prisma@4.15.0 studio",
+    "postinstall": "node --import tsx src/scripts/check-env.ts && prisma generate && prisma deploy && prisma db seed"
+  },
+  "dependencies": {
+    "@auth/prisma-adapter": "^2.11.1",
+    "@prisma/adapter-pg": "^7.1.0",
+    "@prisma/client": "^7.1.0",
+    "@prisma/config": "^7.1.0",
+    "@prisma/extension-accelerate": "^3.0.1",
+    "@types/argon2": "^0.14.1",
+    "argon2": "^0.44.0",
+    "bcrypt": "^6.0.0",
+    "boxen": "^8.0.1",
+    "dotenv": "^17.2.3",
+    "next": "15.1.5",
+    "next-auth": "^5.0.0-beta.25",
+    "obscenity": "0.4.3",
+    "ora": "^8.2.0",
+    "pg": "^8.16.3",
+    "prisma-erd-generator": "^2.0.4",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "table": "^6.9.0",
+    "tldts": "^7.0.13",
+    "zod": "^4.1.5"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "3.2.0",
+    "@types/bcrypt": "^6.0.0",
+    "@types/node": "^25.0.2",
+    "@types/pg": "^8.16.0",
+    "@types/react": "19.0.7",
+    "@types/react-dom": "19.0.3",
+    "eslint": "9.18.0",
+    "eslint-config-next": "15.1.5",
+    "postcss": "8.5.1",
+    "prisma": "^7.1.0",
+    "tailwindcss": "3.4.17",
+    "tsx": "4.19.2",
+    "typescript": "5.7.3"
+  },
+  "resolutions": {
+    "strip-ansi": "^7.1.0",
+    "string-width": "^5.1.2"
+  }
+}
