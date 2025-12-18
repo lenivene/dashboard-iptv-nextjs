@@ -36,7 +36,7 @@ CREATE TABLE "panel" (
     "name" TEXT,
     "logo" TEXT,
     "isBlocked" BOOLEAN NOT NULL DEFAULT false,
-    "expiredAt" TIMESTAMP(3) NOT NULL,
+    "expiredAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
